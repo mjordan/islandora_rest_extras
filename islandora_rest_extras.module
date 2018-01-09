@@ -1,0 +1,110 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function islandora_rest_extras_menu() {
+  $items = array();
+  $items['admin/islandora/tools/rest_extras'] = array(
+    'title' => 'Islandora REST Extras',
+    'description' => 'Configure the Islandora REST Extras module.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('islandora_rest_extras_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Admin settings form builder.
+ */
+function islandora_rest_extras_admin_settings($form, &$form_state) {
+  $form['islandora_rest_extras_dc_source_dsid'] = array(
+    '#title' => t('Source DSID used to regenerate the DC datastream'),
+    '#type' => 'textfield',
+    '#default_value' => variable_get('islandora_rest_extras_dc_source_dsid', 'MODS'),
+    '#description' => t('Leave blank to not regenerate DC.'),
+  );
+  $form['islandora_rest_extras_dc_xslt_path'] = array(
+    '#title' => t('Path to the XSLT stylesheet used to regenerate the DC datastream'),
+    '#type' => 'textfield',
+    '#default_value' => variable_get('islandora_rest_extras_dc_xslt_path', 'sites/all/modules/islandora_xml_forms/builder/transforms/mods_to_dc.xsl'),
+    '#description' => t('Path is relative to your Drupal root.'),
+  );
+
+  return system_settings_form($form);
+}
+
+/**
+ * Implements hook_islandora_rest_response().
+ */
+function islandora_rest_extras_islandora_rest_response($endpoint, $request_parameters, $response, $e) {
+  if ($endpoint == 'datastream' && array_key_exists('dsid', $response) && $response['dsid'] == 'MODS' && array_key_exists('versions', $response)) {
+    $source_dsid = variable_get('islandora_rest_extras_dc_source_dsid', 'MODS');
+    if (strlen($source_dsid)) {
+      if ($object = islandora_object_load($request_parameters['pid'])) {
+        islandora_rest_extras_regenerate_dc($object, $source_dsid);
+      }
+      else {
+        watchdog('islandora_rest_extras', 'Cannot cannot load object !pid',
+        array(
+          '!pid' => $request_parameters['pid'],
+        ),
+        WATCHDOG_WARNING);
+      }
+    }
+  }
+}
+
+/**
+ * Regenerates content of the DC datastream.
+ *
+ * @param object $object
+ *   The Islandora object.
+ * @param string $source_dsid
+ *   The source DSID.
+ *
+ * @return bool
+ *   TRUE if the DC was regenerated and replaced, FALSE otherwise.
+ */
+function islandora_rest_extras_regenerate_dc($object, $source_dsid) {
+  $xslt_path = variable_get('islandora_rest_extras_dc_xslt_path', 'sites/all/modules/islandora_xml_forms/builder/transforms/mods_to_dc.xsl');
+  if (!file_exists($xslt_path)) {
+    watchdog('islandora_rest_extras', 'Cannot find XSLT stylesheet at !path',
+      array(
+        '!path' => $xslt_path,
+      ),
+      WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  if (!isset($object[$source_dsid])) {
+    watchdog('islandora_rest_extras', 'Object does not have the datastream !dsid',
+      array(
+        '!dsid' => $source_dsid,
+      ),
+      WATCHDOG_WARNING);
+    return FALSE;
+  }
+
+  try {
+    $xsl_doc = new DOMDocument();
+    $xsl_doc->load(realpath($xslt_path));
+    $xml_doc = new DOMDocument();
+    $xml_doc->loadXML($object[$source_dsid]->content);
+    $xslt_proc = new XSLTProcessor();
+    $xslt_proc->importStylesheet($xsl_doc);
+    $dc_xml = $xslt_proc->transformToXML($xml_doc);
+    $object['DC']->setContentFromString($dc_xml);
+    return TRUE;
+  }
+  catch (Exception $e) {
+    watchdog_exception(
+      'islandora_rest_extras',
+      $e,
+      'Error regenerating DC content.'
+    );
+    return FALSE;
+  }
+}

@@ -1,0 +1,6 @@
+name = Islandora REST Extras
+description = "Provides optional utility functions for using the Islandora REST interface."
+package = Islandora Tools
+version = 7.x-dev
+core = 7.x
+dependencies[] = islandora_rest
