@@ -45,7 +45,6 @@ function islandora_rest_extras_admin_settings($form, &$form_state) {
     '#default_value' => variable_get('islandora_rest_extras_dc_xslt_path', 'sites/all/modules/islandora_xml_forms/builder/transforms/mods_to_dc.xsl'),
     '#description' => t('Path is relative to your Drupal root.'),
   );
-
   $form['islandora_rest_extras_enable_describe'] = array(
     '#type' => 'checkbox',
     '#title' => t('Enable the /describe endpoint'),
@@ -141,6 +140,11 @@ function islandora_rest_extras_regenerate_dc($object, $source_dsid) {
   }
 }
 
+/**
+ * Menu callback.
+ *
+ * Generates JSON output for the /describe endpoint.
+ */
 function islandora_rest_extras_describe() {
   if (!variable_get('islandora_rest_extras_enable_describe', 1)) {
     drupal_add_http_header('Status', 404);
@@ -151,8 +155,9 @@ function islandora_rest_extras_describe() {
     drupal_exit();
   }
 
-  // Since we only POST one file at a time for datastreams,
-  // we should use that setting instead of post_max_size.
+  // Since we only POST one file at a time for datastreams, we should use
+  // upload_max_filesize instead of post_max_size. This will also cover
+  // PUT requests to the Islandora REST API.
   $upload_max_filesize = ini_get('upload_max_filesize');
   $describe = array('max_datastream_file_size' => $upload_max_filesize);
 
