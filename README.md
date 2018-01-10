@@ -15,7 +15,7 @@ Utility module that provides options for objects ingested via Islandora's REST i
 }
 ```
 
-The `/describe` endpoint takes no parameters, and only returns a JSON response.
+The `/describe` endpoint takes no parameters, and only returns a JSON response. If you want to modify the output of `/describe`, this module provides a hook to do so. See islandora_rest_extras.api.php for more information.
 
 ## Requirements
 

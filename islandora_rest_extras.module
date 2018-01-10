@@ -149,6 +149,9 @@ function islandora_rest_extras_describe() {
   // we should use that setting instead of post_max_size.
   $upload_max_filesize = ini_get('upload_max_filesize');
   $describe = array('max_datastream_file_size' => $upload_max_filesize);
+
+  drupal_alter('islandora_rest_extras_describe', $describe);
+
   drupal_json_output($describe);
   drupal_exit();
 }
