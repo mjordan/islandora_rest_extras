@@ -15,7 +15,8 @@ function islandora_rest_extras_menu() {
   );
   $items['islandora/rest/v1/describe'] = array(
     'page callback' => 'islandora_rest_extras_describe',
-    'access arguments' => array('view repository describe'),
+    // Access control is performed in the callback function.
+    'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   return $items;
@@ -145,6 +146,11 @@ function islandora_rest_extras_describe() {
     drupal_add_http_header('Status', 404);
     drupal_exit();
   }
+  if (!user_access('view repository describe')) {
+    drupal_add_http_header('Status', 401);
+    drupal_exit();
+  }
+
   // Since we only POST one file at a time for datastreams,
   // we should use that setting instead of post_max_size.
   $upload_max_filesize = ini_get('upload_max_filesize');
