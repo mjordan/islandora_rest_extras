@@ -13,6 +13,11 @@ function islandora_rest_extras_menu() {
     'access arguments' => array('administer site configuration'),
     'type' => MENU_NORMAL_ITEM,
   );
+  $items['islandora/rest/v1/describe'] = array(
+    'page callback' => 'islandora_rest_extras_describe',
+    'access arguments' => array('view repository describe'),
+    'type' => MENU_CALLBACK,
+  );
   return $items;
 }
 
@@ -20,20 +25,46 @@ function islandora_rest_extras_menu() {
  * Admin settings form builder.
  */
 function islandora_rest_extras_admin_settings($form, &$form_state) {
-  $form['islandora_rest_extras_dc_source_dsid'] = array(
+  $form['islandora_rest_extras_dc_generation'] = array(
+    '#title' => t('DC datastream generation'),
+    '#type' => 'fieldset',
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+    '#description' => t("Settings governing generation of DC datastream content."),
+  );
+  $form['islandora_rest_extras_dc_generation']['islandora_rest_extras_dc_source_dsid'] = array(
     '#title' => t('Source DSID used to regenerate the DC datastream'),
     '#type' => 'textfield',
     '#default_value' => variable_get('islandora_rest_extras_dc_source_dsid', 'MODS'),
     '#description' => t('Leave blank to not regenerate DC.'),
   );
-  $form['islandora_rest_extras_dc_xslt_path'] = array(
+  $form['islandora_rest_extras_dc_generation']['islandora_rest_extras_dc_xslt_path'] = array(
     '#title' => t('Path to the XSLT stylesheet used to regenerate the DC datastream'),
     '#type' => 'textfield',
     '#default_value' => variable_get('islandora_rest_extras_dc_xslt_path', 'sites/all/modules/islandora_xml_forms/builder/transforms/mods_to_dc.xsl'),
     '#description' => t('Path is relative to your Drupal root.'),
   );
 
+  $form['islandora_rest_extras_enable_describe'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enable the /describe endpoint'),
+    '#default_value' => variable_get('islandora_rest_extras_enable_describe', 1),
+    '#description' => t('Check this option if you want to enable the /describe REST endpoint.'),
+  );
+
   return system_settings_form($form);
+}
+
+/**
+ * Implements hook_permission().
+ */
+function islandora_rest_extras_permission() {
+  return array(
+    'view repository describe' => array(
+      'title' => t('View repository describe'),
+      'description' => t('Allows users to view the output of the REST /describe endpoint, which may contain sensitive information.'),
+    ),
+  );
 }
 
 /**
@@ -107,4 +138,17 @@ function islandora_rest_extras_regenerate_dc($object, $source_dsid) {
     );
     return FALSE;
   }
+}
+
+function islandora_rest_extras_describe() {
+  if (!variable_get('islandora_rest_extras_enable_describe', 1)) {
+    drupal_add_http_header('Status', 404);
+    drupal_exit();
+  }
+  // Since we only POST one file at a time for datastreams,
+  // we should use that setting instead of post_max_size.
+  $upload_max_filesize = ini_get('upload_max_filesize');
+  $describe = array('max_datastream_file_size' => $upload_max_filesize);
+  drupal_json_output($describe);
+  drupal_exit();
 }
