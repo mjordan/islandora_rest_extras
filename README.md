@@ -4,7 +4,7 @@
 
 ## Introduction
 
-Utility module that provides options for objects ingested via Islandora's REST interface. Currently, it provides two features:
+Utility module that provides additional functionality for Islandora's REST interface. Currently, it provides two features:
 
 * a way to regenerate the DC of each ingested object, effectively emulating the behavior of objects ingested using Islandora's web interface or standard batch tools
 * a very basic 'describe' REST endpoint that returns the server's configuration value limiting the size of the largest file that can be `POST`ed; the JSON returned by a requst to `islandora/rest/v1/describe` is like this, where `500M` is the value of the server's PHP 'upload_max_filesize' configuration value:
